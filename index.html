@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Turnos · Dra. Flisiak</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink:#0f0e0d;--ink2:#5a5550;--ink3:#9e9890;
+  --paper:#f7f4ef;--white:#ffffff;--rule:#e6e1d9;--rule2:#cdc8be;
+  --sage:#3d6b55;--sage-pale:#eaf2ec;--sage-mid:#b8d9c0;
+  --amber:#b45309;--amber-pale:#fef7ec;--amber-mid:#fcd89a;
+  --rose:#9f2d2d;--rose-pale:#fdf0f0;--rose-mid:#f5c0c0;
+  --wa:#25d366;--wa-dk:#128c4a;
+  --mono:'DM Mono',monospace;--serif:'Instrument Serif',Georgia,serif;--sans:'DM Sans',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:14px;}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+.topbar{position:sticky;top:0;z-index:40;background:var(--ink);color:var(--white);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:44px;}
+.topbar-brand{display:flex;align-items:baseline;gap:10px;}
+.topbar-name{font-family:var(--serif);font-size:16px;color:var(--white);}
+.topbar-sep{width:1px;height:13px;background:rgba(255,255,255,0.2);}
+.topbar-semana{font-family:var(--mono);font-size:10px;color:rgba(255,255,255,0.45);letter-spacing:0.04em;}
+.topbar-right{display:flex;align-items:center;gap:6px;}
+.btn-top{font-family:var(--sans);font-size:11px;font-weight:500;padding:5px 12px;border-radius:5px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);cursor:pointer;}
+.btn-top:hover{background:rgba(255,255,255,0.18);color:white;}
+
+.dias-nav{background:var(--white);border-bottom:1px solid var(--rule);padding:0 1.5rem;display:flex;gap:0;overflow-x:auto;align-items:stretch;}
+.dia-btn{padding:10px 16px 8px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--ink2);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:2px;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
+.dia-btn:hover{color:var(--ink);}
+.dia-btn.active{color:var(--ink);border-bottom-color:var(--ink);}
+.dia-btn-fecha{font-family:var(--mono);font-size:9px;color:var(--ink3);}
+.dia-btn.active .dia-btn-fecha{color:var(--ink2);}
+.dia-pill{font-size:9px;font-weight:700;background:var(--rule);color:var(--ink2);border-radius:20px;padding:1px 6px;font-family:var(--mono);}
+.dia-btn.active .dia-pill{background:var(--ink);color:var(--white);}
+.dia-ocultar{display:none;font-size:11px;color:var(--ink3);margin-left:2px;padding:0 2px;border-radius:3px;}
+.dia-ocultar:hover{color:var(--rose);}
+.dia-btn:hover .dia-ocultar{display:inline;}
+.dia-btn-oculto{opacity:0.4;font-style:italic;}
+.dia-btn-ocultos{display:flex;align-items:center;padding:8px 12px;font-size:10px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--ink3);font-family:var(--mono);border-left:1px solid var(--rule);align-self:center;}
+.nav-sep{width:1px;background:var(--rule2);margin:8px 8px;align-self:stretch;}
+.espera-btn{padding:10px 16px 8px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--ink2);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:2px;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
+.espera-btn:hover{color:var(--amber);}
+.espera-btn.active{color:var(--amber);border-bottom-color:var(--amber);}
+.espera-pill{font-size:9px;font-weight:700;background:var(--amber-pale);color:var(--amber);border-radius:20px;padding:1px 6px;font-family:var(--mono);border:1px solid var(--amber-mid);}
+.dia-btn-add{display:flex;align-items:center;gap:5px;padding:8px 14px;font-size:11px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--ink3);font-family:var(--sans);border-left:1px solid var(--rule);margin-left:4px;white-space:nowrap;align-self:center;}
+.dia-btn-add:hover{color:var(--sage);}
+
+.main{padding:1.25rem 1.5rem;}
+.tabla{max-width:900px;background:var(--white);border:1px solid var(--rule);border-radius:10px;overflow:hidden;}
+.stats-row{display:flex;align-items:center;gap:16px;margin-bottom:1rem;flex-wrap:wrap;max-width:900px;}
+.stat-item{display:flex;align-items:baseline;gap:5px;font-size:12px;color:var(--ink2);}
+.stat-num{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--ink);}
+.stat-num.sage{color:var(--sage);}.stat-num.amber{color:var(--amber);}.stat-num.rose{color:var(--rose);}
+.stat-div{width:1px;height:16px;background:var(--rule2);}
+
+.tabla-head{display:grid;grid-template-columns:60px minmax(160px,260px) 180px 140px 120px 48px;background:var(--ink);color:rgba(255,255,255,0.5);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;font-family:var(--mono);}
+.th{padding:8px 12px;border-right:1px solid rgba(255,255,255,0.07);}
+.th:last-child{border-right:none;text-align:center;}
+
+.fila{display:grid;grid-template-columns:60px minmax(160px,260px) 180px 140px 120px 48px;border-bottom:1px solid var(--rule);align-items:stretch;}
+.fila:last-child{border-bottom:none;}
+.fila.libre{background:#f0fdf4;}.fila.libre:hover{background:#e6f9ec;}
+.fila.libre .td{border-right-color:#c6f0d0;color:#2d6a4f;}
+.fila.libre .td-hora{color:#2d6a4f;}
+.fila.libre .inp-inline{color:#2d6a4f;}
+.fila.libre .inp-inline::placeholder{color:#7bbf96;}
+.fila.libre .inp-os,.fila.libre .inp-tel{color:#3d6b55;}
+.fila.pendiente{background:#fffbeb;}.fila.pendiente:hover{background:#fef3c7;}
+.fila.pendiente .td{border-right-color:#fcd89a;}
+.fila.pendiente .td-hora,.fila.pendiente .inp-inline{color:#92400e;}
+.fila.pendiente .inp-inline::placeholder{color:#d49a3a;}
+.fila.pendiente .inp-os,.fila.pendiente .inp-tel{color:#b45309;}
+.fila.confirmada{background:#eaf2ec;}.fila.confirmada:hover{background:#d8ede3;}
+.fila.confirmada .td{border-right-color:#b8d9c0;}
+.fila.confirmada .td-hora{color:#1b4332;font-weight:600;}
+.fila.confirmada .inp-inline{color:#1b4332;}
+.fila.confirmada .inp-os,.fila.confirmada .inp-tel{color:#3d6b55;}
+.fila.cancelada{background:var(--rose-pale);}.fila.cancelada:hover{background:#fde8e8;}
+.fila.cancelada .td{border-right-color:var(--rose-mid);}
+.fila.cancelada .td-hora,.fila.cancelada .inp-inline{color:var(--rose);}
+
+.td{padding:7px 12px;border-right:1px solid var(--rule);display:flex;align-items:center;font-size:12.5px;min-height:38px;}
+.td:last-child{border-right:none;justify-content:center;padding:6px;}
+.td-hora{font-family:var(--mono);font-size:13px;font-weight:500;}
+.td-pac{font-weight:500;font-size:13px;}
+.td-conf{justify-content:center;}
+.inp-inline{font-family:var(--sans);font-size:13px;font-weight:500;border:none;background:none;outline:none;width:100%;color:var(--ink);padding:0;border-bottom:1px solid transparent;}
+.inp-inline:hover{border-bottom-color:var(--rule2);}
+.inp-inline:focus{border-bottom-color:var(--sage);background:var(--sage-pale);border-radius:3px;padding:1px 4px;}
+.inp-inline::placeholder{color:var(--ink3);font-style:italic;font-weight:300;font-size:11px;}
+.inp-tel{font-family:var(--mono);font-size:11.5px;font-weight:400;color:var(--ink2);}
+.inp-os{font-size:11px;font-weight:500;color:var(--ink2);cursor:pointer;max-width:100%;border-radius:4px;padding:2px 4px;}
+.inp-os.part{color:#2d52a4;background:#f0f4ff;}
+
+.conf-btn{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:3px 10px;border-radius:20px;cursor:pointer;border:1px solid transparent;font-family:var(--sans);white-space:nowrap;}
+.conf-confirma{background:var(--sage-pale);color:var(--sage);border-color:var(--sage-mid);}
+.conf-pendiente{background:var(--amber-pale);color:var(--amber);border-color:var(--amber-mid);}
+.conf-cancela{background:var(--rose-pale);color:var(--rose);border-color:var(--rose-mid);}
+
+.wa-btn{width:30px;height:30px;border-radius:50%;background:var(--wa);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;text-decoration:none;}
+.wa-btn:hover{background:var(--wa-dk);}
+.wa-btn.off{opacity:0.15;pointer-events:none;}
+
+.fila-nueva{display:grid;grid-template-columns:60px minmax(160px,260px) 180px 140px 120px 48px;border-top:2px dashed var(--rule2);background:#faf8f5;align-items:center;min-height:40px;}
+.fila-nueva .td{background:none;min-height:40px;}
+.inp-cel{font-family:var(--sans);font-size:12.5px;border:none;background:none;outline:none;width:100%;color:var(--ink);}
+.inp-cel::placeholder{color:var(--ink3);font-style:italic;}
+select.inp-cel{cursor:pointer;}
+.btn-add{margin:0 auto;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--white);border:none;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;}
+.btn-add:hover{background:var(--sage);}
+
+.espera-head{display:grid;grid-template-columns:40px minmax(130px,220px) 160px 130px 100px 110px 120px 48px;background:var(--ink);color:rgba(255,255,255,0.5);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;font-family:var(--mono);}
+.fila-espera{display:grid;grid-template-columns:40px minmax(130px,220px) 160px 130px 100px 110px 120px 48px;border-bottom:1px solid var(--rule);align-items:stretch;}
+.fila-espera:last-child{border-bottom:none;}
+.fila-espera:hover{background:#faf8f5;}
+.fila-nueva-espera{display:grid;grid-template-columns:40px minmax(130px,220px) 160px 130px 100px 110px 120px 48px;border-top:2px dashed var(--rule2);background:#faf8f5;align-items:center;min-height:40px;}
+.fila-nueva-espera .td{background:none;min-height:40px;}
+
+.empty{padding:2.5rem;text-align:center;color:var(--ink3);font-size:13px;}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,14,13,0.45);z-index:100;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(4px);}
+.overlay.open{display:flex;}
+.modal{background:var(--white);border-radius:12px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.16);}
+.modal-head{background:var(--ink);padding:1.1rem 1.25rem;display:flex;justify-content:space-between;align-items:center;}
+.modal-title{font-family:var(--serif);font-size:17px;color:var(--white);}
+.modal-close{background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer;}
+.modal-close:hover{color:white;}
+.modal-body{padding:1.25rem;}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:1rem;}
+.form-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink2);}
+.form-input{padding:8px 11px;border:1px solid var(--rule2);border-radius:6px;font-size:14px;font-family:var(--sans);color:var(--ink);background:var(--white);outline:none;}
+.form-input:focus{border-color:var(--ink);}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:0.5rem;}
+.btn-cancel{font-family:var(--sans);font-size:12px;font-weight:500;padding:7px 14px;border-radius:6px;border:1px solid var(--rule2);background:var(--white);color:var(--ink2);cursor:pointer;}
+.btn-confirm{font-family:var(--sans);font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;background:var(--ink);color:white;border:none;cursor:pointer;}
+
+.modal-wa{background:var(--white);border-radius:12px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.16);}
+.modal-wa-top{padding:1.1rem 1.25rem 0.9rem;border-bottom:1px solid var(--rule);}
+.modal-wa-nombre{font-family:var(--serif);font-size:18px;margin-bottom:2px;}
+.modal-wa-meta{font-size:11px;color:var(--ink2);font-family:var(--mono);}
+.modal-wa-body{padding:1rem 1.25rem 1.25rem;}
+.msg-burbuja{background:var(--paper);border:1px solid var(--rule);border-left:3px solid var(--wa);border-radius:7px;padding:11px 13px;font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--ink);margin-bottom:1rem;}
+.wa-actions{display:flex;justify-content:flex-end;gap:8px;}
+.btn-wa-open{font-family:var(--sans);font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;background:var(--wa);color:white;border:none;cursor:pointer;text-decoration:none;display:inline-block;}
+.btn-wa-open:hover{background:var(--wa-dk);}
+
+.os-row{display:grid;grid-template-columns:1fr 150px 44px;border-bottom:1px solid var(--rule);align-items:center;min-height:38px;}
+.os-row:hover{background:#faf8f5;}
+.os-nueva{display:grid;grid-template-columns:1fr 150px 44px;border-top:2px dashed var(--rule2);background:#faf8f5;align-items:center;min-height:40px;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <span class="topbar-name">Dra. Graciela Flisiak</span>
+    <div class="topbar-sep"></div>
+    <span class="topbar-semana" id="lbl-semana"></span>
+  </div>
+  <div class="topbar-right">
+    <span id="save-status" style="font-size:11px;color:rgba(255,255,255,0.4);margin-right:4px;"></span>
+    <button class="btn-top" onclick="guardarHTML()">💾 Guardar</button>
+    <button class="btn-top" onclick="exportarDatos()">↓ Exportar</button>
+    <button class="btn-top" onclick="document.getElementById('restore-in').click()">↑ Restaurar</button>
+    <input type="file" id="restore-in" accept=".json" style="display:none" onchange="restaurarDatos(event)"/>
+    <button class="btn-top" onclick="document.getElementById('csv-in').click()">↑ CSV</button>
+    <input type="file" id="csv-in" accept=".csv" style="display:none" onchange="importCSV(event)"/>
+  </div>
+</header>
+
+<nav class="dias-nav" id="dias-nav">
+  <div id="dias-tabs-wrap" style="display:contents"></div>
+  <div class="nav-sep"></div>
+  <button class="espera-btn" id="btn-espera" onclick="switchVista('espera')">
+    Lista de espera
+    <span class="espera-pill" id="espera-pill">0</span>
+  </button>
+  <div class="nav-sep"></div>
+  <button class="espera-btn" id="btn-os" onclick="abrirModalOS()" style="font-size:11px;padding:8px 14px;color:var(--ink2);">
+    ✏️ Obras Sociales
+  </button>
+</nav>
+
+<main class="main" id="main-turnos">
+  <div class="stats-row" id="stats-row"></div>
+  <div class="tabla">
+    <div class="tabla-head">
+      <div class="th">Hora</div>
+      <div class="th">Paciente</div>
+      <div class="th">Obra Social</div>
+      <div class="th">Teléfono</div>
+      <div class="th" style="text-align:center;">Confirmó</div>
+      <div class="th" style="text-align:center;">WA</div>
+    </div>
+    <div id="tabla-body"></div>
+    <div class="fila-nueva">
+      <div class="td"><input class="inp-cel" type="time" id="n-hora" step="1800"/></div>
+      <div class="td"><input class="inp-cel" type="text" id="n-pac" placeholder="Nombre paciente"/></div>
+      <div class="td"><select class="inp-cel" id="n-os"></select></div>
+      <div class="td"><input class="inp-cel" type="text" id="n-tel" placeholder="362 4XXXXXX"/></div>
+      <div class="td" style="justify-content:center;"><select class="inp-cel" id="n-conf"><option value="">Pendiente</option><option value="CONFIRMA">Confirma</option><option value="CANCELA">Cancela</option></select></div>
+      <div class="td"><button class="btn-add" onclick="agregarFila()">+</button></div>
+    </div>
+  </div>
+</main>
+
+<main class="main" id="main-espera" style="display:none;">
+  <div class="stats-row" id="espera-stats"></div>
+  <div class="tabla" style="max-width:1000px;">
+    <div class="espera-head">
+      <div class="th">N°</div><div class="th">Paciente</div><div class="th">Obra Social</div>
+      <div class="th">Teléfono</div><div class="th">Fecha turno</div><div class="th">Hora turno</div>
+      <div class="th" style="text-align:center;">Estado</div><div class="th" style="text-align:center;">WA</div>
+    </div>
+    <div id="espera-body"></div>
+    <div class="fila-nueva-espera">
+      <div class="td"><span style="font-family:var(--mono);font-size:11px;color:var(--ink3);">#</span></div>
+      <div class="td"><input class="inp-cel" type="text" id="e-pac" placeholder="Nombre paciente"/></div>
+      <div class="td"><select class="inp-cel" id="e-os"></select></div>
+      <div class="td"><input class="inp-cel" type="text" id="e-tel" placeholder="362 4XXXXXX"/></div>
+      <div class="td"><input class="inp-cel" type="date" id="e-fecha"/></div>
+      <div class="td"><input class="inp-cel" type="time" id="e-hora" step="1800"/></div>
+      <div class="td" style="justify-content:center;"><select class="inp-cel" id="e-estado"><option value="en espera">En espera</option><option value="contactada">Contactada</option><option value="asignada">Asignada</option></select></div>
+      <div class="td"><button class="btn-add" onclick="agregarEspera()">+</button></div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL: OBRAS SOCIALES -->
+<div class="overlay" id="overlay-os" onclick="if(event.target===this)cerrarModalOS()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Obras Sociales</span>
+      <button class="modal-close" onclick="cerrarModalOS()">×</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <div style="display:grid;grid-template-columns:1fr 150px 44px;background:var(--ink);color:rgba(255,255,255,0.5);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;font-family:var(--mono);">
+        <div style="padding:8px 14px;">Nombre</div>
+        <div style="padding:8px 14px;">Monto</div>
+        <div></div>
+      </div>
+      <div id="os-lista" style="max-height:380px;overflow-y:auto;"></div>
+      <div class="os-nueva">
+        <div class="td"><input class="inp-cel" type="text" id="os-new-nombre" placeholder="Nueva obra social"/></div>
+        <div class="td"><input class="inp-cel" type="text" id="os-new-monto" placeholder="Ej: $30.000"/></div>
+        <div class="td"><button class="btn-add" onclick="agregarNuevaOS()">+</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AGREGAR DÍA -->
+<div class="overlay" id="overlay-dia" onclick="if(event.target===this)cerrarModalDia()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Agregar día</span>
+      <button class="modal-close" onclick="cerrarModalDia()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Fecha</label><input class="form-input" type="date" id="nd-fecha"/></div>
+      <div class="form-group"><label class="form-label">Nombre del día (opcional)</label><input class="form-input" type="text" id="nd-label" placeholder="Ej: Lunes, Guardia..."/></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="cerrarModalDia()">Cancelar</button>
+        <button class="btn-confirm" onclick="confirmarNuevoDia()">Agregar día</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: WHATSAPP -->
+<div class="overlay" id="overlay-wa" onclick="if(event.target===this)cerrarModalWA()">
+  <div class="modal-wa">
+    <div class="modal-wa-top">
+      <div class="modal-wa-nombre" id="m-nombre"></div>
+      <div class="modal-wa-meta" id="m-meta"></div>
+    </div>
+    <div class="modal-wa-body">
+      <div class="msg-burbuja" id="m-msg"></div>
+      <div class="wa-actions">
+        <button class="btn-cancel" onclick="cerrarModalWA()">Cerrar</button>
+        <a id="m-link" href="#" target="_blank" style="text-decoration:none;"><button class="btn-wa-open">Abrir WhatsApp ↗</button></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBsaSy5o9COarc3LI80axoRmSv51zWXomY",
+  authDomain: "turnos-medicos-9e831.firebaseapp.com",
+  projectId: "turnos-medicos-9e831",
+  storageBucket: "turnos-medicos-9e831.firebasestorage.app",
+  messagingSenderId: "456859633649",
+  appId: "1:456859633649:web:0859e87ed54a1187fea650"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const DOC = doc(db,'turnos','datos');
+
+const HORARIOS = {
+  1:['7:30','8:00','8:30','9:00','9:30','10:00','10:30','11:00','11:30','12:00'],
+  2:['7:30','8:00','8:30','9:00','9:30','10:00','10:30','11:00','11:30','12:00'],
+  3:['9:00','9:30','10:00','10:30','11:00','11:30','12:00'],
+  4:['7:30','8:00','8:30','9:00','9:30','10:00','10:30','11:00','16:30','17:00','17:30','18:00','18:30','19:00'],
+  5:['7:30','8:00','8:30','9:00','9:30','10:00','10:30','11:00','11:30','12:00'],
+};
+const LABELS = ['Dom','Lunes','Martes','Miércoles','Jueves','Viernes','Sáb'];
+
+let dias=[], filas={}, espera=[];
+let obrasSociales=[
+  {nombre:'OSDE',monto:''},{nombre:'INSSSEP',monto:'$30.000'},{nombre:'PARTICULAR',monto:'$50.000'},
+  {nombre:'SWISS MEDICAL',monto:'$30.000'},{nombre:'DASUTEN',monto:'$30.000'},{nombre:'SANCOR',monto:'$30.000'},
+  {nombre:'CAMIONEROS',monto:'$30.000'},{nombre:'ACCORD SALUD',monto:'$30.000'},{nombre:'UNION PERSONAL',monto:'$30.000'},
+  {nombre:'OSJERA',monto:'$30.000'},{nombre:'OMINT',monto:'$30.000'},{nombre:'APM',monto:'$30.000'},
+  {nombre:'PODER JUDICIAL',monto:'$30.000'},{nombre:'ISSUNNE',monto:'$30.000'},{nombre:'ATSA',monto:'$30.000'},
+  {nombre:'NOBIS',monto:'$30.000'},{nombre:'OSPEDYC',monto:'$30.000'},{nombre:'SANTA CLARA',monto:'$30.000'},
+  {nombre:'IOSFA',monto:'$30.000'},{nombre:'SPF',monto:'$30.000'},{nombre:'JERARQUICOS SALUD',monto:'$30.000'},
+  {nombre:'AVALIAN',monto:'$30.000'},{nombre:'COSECHA SALUD',monto:'$30.000'},{nombre:'BRAMED',monto:'$30.000'},
+  {nombre:'OSPESCHA',monto:'$30.000'},{nombre:'UTEPLIM',monto:'$30.000'},
+];
+let diaActivo=0, vistaActiva='turnos', mostrandoOcultos=false;
+
+// ── OS ──────────────────────────────────────────────────────────
+function osLabel(os){ return os.monto?`${os.nombre} (${os.monto})`:os.nombre; }
+
+// Extrae el nombre base de un string (quita monto entre paréntesis)
+function osNombreBase(str){ return (str||'').replace(/\s*\(.*?\)/g,'').trim(); }
+
+function osOpciones(actual){
+  const actualBase = osNombreBase(actual);
+  return [''].concat(obrasSociales).map((o,i)=>{
+    if(i===0) return`<option value="">— sin OS —</option>`;
+    const val=osLabel(o);
+    const sel=o.nombre===actualBase?'selected':'';
+    return`<option value="${val}" ${sel}>${val}</option>`;
+  }).join('')+`<option value="__nueva__">+ Agregar nueva...</option>`;
+}
+
+function abrirModalOS(){
+  renderOSLista();
+  document.getElementById('overlay-os').classList.add('open');
+}
+function cerrarModalOS(){
+  document.getElementById('overlay-os').classList.remove('open');
+  renderTabla(); renderEspera();
+  document.getElementById('n-os').innerHTML=osOpciones('');
+  document.getElementById('e-os').innerHTML=osOpciones('');
+}
+function renderOSLista(){
+  document.getElementById('os-lista').innerHTML=obrasSociales.map((os,idx)=>`
+    <div class="os-row">
+      <div class="td" style="font-size:13px;font-weight:500;color:var(--ink);">${os.nombre}</div>
+      <div class="td"><input class="inp-inline inp-tel" value="${os.monto}" placeholder="sin monto"
+        onblur="window._editOS(${idx},this.value)" onkeydown="if(event.key==='Enter')window._editOS(${idx},this.value)"/></div>
+      <div class="td" style="justify-content:center;">
+        <button onclick="window._delOS(${idx})" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:13px;">✕</button>
+      </div>
+    </div>`).join('');
+}
+window._editOS=(idx,monto)=>{ obrasSociales[idx].monto=monto.trim(); guardar(); };
+window._delOS=(idx)=>{ if(!confirm(`¿Eliminar "${obrasSociales[idx].nombre}"?`))return; obrasSociales.splice(idx,1); guardar(); renderOSLista(); };
+window.agregarNuevaOS=()=>{
+  const n=document.getElementById('os-new-nombre').value.trim();
+  const m=document.getElementById('os-new-monto').value.trim();
+  if(!n){alert('Ingresá el nombre');return;}
+  if(obrasSociales.find(o=>o.nombre===n)){alert('Ya existe');return;}
+  obrasSociales.push({nombre:n,monto:m}); guardar();
+  document.getElementById('os-new-nombre').value='';
+  document.getElementById('os-new-monto').value='';
+  renderOSLista();
+};
+
+// ── FIREBASE ────────────────────────────────────────────────────
+function setStatus(s){
+  const el=document.getElementById('save-status');if(!el)return;
+  if(s==='guardando'){el.textContent='⏳';el.style.color='rgba(255,255,255,0.5)';}
+  if(s==='ok'){el.textContent='✓ Guardado';el.style.color='rgba(255,255,255,0.4)';setTimeout(()=>el.textContent='',2000);}
+  if(s==='error'){el.textContent='⚠ Error';el.style.color='#f87171';}
+}
+async function guardar(){
+  setStatus('guardando');
+  try{
+    await setDoc(DOC,{dias,filas,espera,obrasSociales});
+    setStatus('ok');
+    localStorage.setItem('tf_bk',JSON.stringify({dias,filas,espera,obrasSociales}));
+  }catch(e){
+    setStatus('error');
+    try{localStorage.setItem('tf_bk',JSON.stringify({dias,filas,espera,obrasSociales}));}catch(e2){}
+  }
+}
+async function cargar(){
+  try{
+    const snap=await getDoc(DOC);
+    if(snap.exists()){
+      const d=snap.data();
+      if(d.dias)dias=d.dias;if(d.filas)filas=d.filas;if(d.espera)espera=d.espera;if(d.obrasSociales)obrasSociales=d.obrasSociales;
+      return true;
+    }
+  }catch(e){
+    try{const b=localStorage.getItem('tf_bk');if(b){const d=JSON.parse(b);dias=d.dias||dias;filas=d.filas||filas;espera=d.espera||espera;obrasSociales=d.obrasSociales||obrasSociales;}}catch(e2){}
+  }
+  return false;
+}
+
+// ── HELPERS ─────────────────────────────────────────────────────
+function fmtF(f){const[y,m,d]=f.split('-');return`${parseInt(d)}/${parseInt(m)}`;}
+function fmtSemana(){if(!dias.length)return'';return`${fmtF(dias[0].fecha)} — ${fmtF(dias[dias.length-1].fecha)}`;}
+function waNum(tel){const t=tel.replace(/\D/g,'');return t.startsWith('54')?t:'54'+t;}
+function mensaje(f,fecha){
+  const dia=dias.find(d=>d.fecha===fecha);
+  const label=(dia?.label||'').toLowerCase();
+  if(label.includes('lunes'))return`Hola, recuerde que el lunes tiene turno. ¿Confirma asistencia?`;
+  return`Hola, recuerde que mañana tiene turno a las ${f.hora}. ¿Confirma asistencia?`;
+}
+function waLink(f,fecha){return`https://wa.me/${waNum(f.tel)}?text=${encodeURIComponent(mensaje(f,fecha))}`;}
+function svgWA(){return`<svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;}
+function generarSlots(fecha){const dia=new Date(fecha+'T12:00:00').getDay();return(HORARIOS[dia]||[]).map(h=>({hora:h,pac:'',os:'',tel:'',conf:''}));}
+
+// ── BACKUP ──────────────────────────────────────────────────────
+function guardarHTML(){
+  const blob=new Blob([document.documentElement.outerHTML],{type:'text/html'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download='index.html';a.click();URL.revokeObjectURL(url);
+}
+function exportarDatos(){
+  const blob=new Blob([JSON.stringify({dias,filas,espera,obrasSociales},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=`turnos_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
+}
+function restaurarDatos(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.dias)dias=d.dias;if(d.filas)filas=d.filas;if(d.espera)espera=d.espera;if(d.obrasSociales)obrasSociales=d.obrasSociales;diaActivo=0;guardar();render();alert('✓ Datos restaurados.');}catch(err){alert('Archivo inválido.');}};
+  r.readAsText(file);e.target.value='';
+}
+function importCSV(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const lines=ev.target.result.split('\n');let diaIdx=-1;let ok=0;
+    dias=[];Object.keys(filas).forEach(k=>delete filas[k]);
+    lines.forEach(line=>{
+      const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
+      if(cols[0].toUpperCase()==='HORA'&&cols[1].toUpperCase()==='PACIENTE'){
+        diaIdx++;const base=new Date();base.setDate(base.getDate()+diaIdx);
+        const fecha=base.toISOString().split('T')[0];
+        dias.push({fecha,label:['Lunes','Martes','Miércoles','Jueves','Viernes'][diaIdx]||`Día ${diaIdx+1}`});
+        filas[fecha]=[];return;
+      }
+      if(diaIdx<0||diaIdx>=dias.length)return;
+      const[hora,pac,os,tel,conf]=cols;if(!hora||hora==='undefined')return;
+      filas[dias[diaIdx].fecha].push({hora:hora.trim(),pac:(pac||'').trim(),os:(os||'').trim(),tel:(tel||'').trim(),conf:(conf||'').trim()});ok++;
+    });
+    diaActivo=0;guardar();render();alert(`✓ ${ok} turnos importados.`);
+  };
+  r.readAsText(file);e.target.value='';
+}
+
+// ── VISTA ───────────────────────────────────────────────────────
+function switchVista(vista){
+  vistaActiva=vista;
+  document.getElementById('main-turnos').style.display=vista==='turnos'?'':'none';
+  document.getElementById('main-espera').style.display=vista==='espera'?'':'none';
+  document.getElementById('btn-espera').classList.toggle('active',vista==='espera');
+  document.querySelectorAll('.dia-btn').forEach(b=>{if(vista!=='turnos')b.classList.remove('active');});
+  if(vista==='turnos'){const btns=document.querySelectorAll('.dia-btn');if(btns[diaActivo])btns[diaActivo].classList.add('active');renderTabla();renderStats();}
+  else{renderEspera();renderEsperaStats();document.getElementById('e-os').innerHTML=osOpciones('');}
+}
+
+// ── DIAS ────────────────────────────────────────────────────────
+function ocultarDia(i,e){e.stopPropagation();dias[i].oculto=true;const vis=dias.filter(d=>!d.oculto);if(vis.length>0)diaActivo=dias.indexOf(vis[0]);guardar();renderDias();renderTabla();renderStats();}
+function toggleOcultos(){mostrandoOcultos=!mostrandoOcultos;renderDias();}
+function restaurarDia(i,e){e.stopPropagation();dias[i].oculto=false;guardar();renderDias();}
+function switchDia(i){vistaActiva='turnos';diaActivo=i;document.getElementById('main-turnos').style.display='';document.getElementById('main-espera').style.display='none';document.getElementById('btn-espera').classList.remove('active');renderDias();renderTabla();renderStats();}
+
+function renderDias(){
+  document.getElementById('lbl-semana').textContent=fmtSemana();
+  const vis=dias.filter(d=>!d.oculto);const oc=dias.filter(d=>d.oculto);
+  const tVis=vis.map(d=>{const i=dias.indexOf(d);const cnt=(filas[d.fecha]||[]).filter(f=>f.pac).length;
+    return`<button class="dia-btn ${i===diaActivo&&vistaActiva==='turnos'?'active':''}" onclick="switchDia(${i})">${d.label}<span class="dia-btn-fecha">${fmtF(d.fecha)}</span><span class="dia-pill">${cnt}</span><span class="dia-ocultar" onclick="ocultarDia(${i},event)">×</span></button>`;}).join('');
+  const tOc=mostrandoOcultos?oc.map(d=>{const i=dias.indexOf(d);return`<button class="dia-btn dia-btn-oculto" onclick="restaurarDia(${i},event)">${d.label}<span class="dia-btn-fecha">${fmtF(d.fecha)}</span></button>`;}).join(''):'';
+  const btnOc=oc.length?`<button class="dia-btn-ocultos" onclick="toggleOcultos()">${mostrandoOcultos?'▲':'▼'} ${oc.length} oculto${oc.length>1?'s':''}</button>`:'';
+  document.getElementById('dias-tabs-wrap').innerHTML=tVis+tOc+btnOc+`<button class="dia-btn-add" onclick="abrirModalDia()">+ Agregar día</button>`;
+  renderEsperaPill();
+}
+
+// ── STATS ───────────────────────────────────────────────────────
+function renderStats(){
+  const fecha=dias[diaActivo]?.fecha;const lista=filas[fecha]||[];
+  const total=lista.filter(f=>f.pac).length,conf=lista.filter(f=>(f.conf||'').toUpperCase()==='CONFIRMA').length,pend=lista.filter(f=>f.pac&&!(f.conf||'').trim()).length,canc=lista.filter(f=>(f.conf||'').toUpperCase()==='CANCELA').length;
+  document.getElementById('stats-row').innerHTML=`<div class="stat-item"><span class="stat-num">${total}</span> pacientes</div><div class="stat-div"></div><div class="stat-item"><span class="stat-num sage">${conf}</span> confirmadas</div><div class="stat-div"></div><div class="stat-item"><span class="stat-num amber">${pend}</span> pendientes</div>${canc?`<div class="stat-div"></div><div class="stat-item"><span class="stat-num rose">${canc}</span> canceladas</div>`:''}`;
+}
+
+// ── TABLA ───────────────────────────────────────────────────────
+function ciclar(idx){
+  const fecha=dias[diaActivo].fecha;const estados=['','CONFIRMA','CANCELA'];const actual=(filas[fecha][idx].conf||'').toUpperCase();
+  filas[fecha][idx].conf=estados[(estados.indexOf(actual)+1)%3];guardar();renderTabla();renderStats();
+}
+function editarCampo(idx,campo,valor,tabla='turnos'){
+  if(tabla==='espera'){if(!espera[idx])return;espera[idx][campo]=valor.trim();}
+  else{const fecha=dias[diaActivo]?.fecha;if(!fecha||!filas[fecha])return;filas[fecha][idx][campo]=valor.trim();}
+  guardar();renderStats();renderDias();renderEsperaPill();
+}
+function renderTabla(){
+  const fecha=dias[diaActivo]?.fecha;const lista=filas[fecha]||[];
+  if(!lista.length){document.getElementById('tabla-body').innerHTML='<div class="empty">Sin turnos — usá la fila de abajo para agregar</div>';return;}
+  document.getElementById('tabla-body').innerHTML=lista.map((f,idx)=>{
+    const conf=(f.conf||'').toUpperCase(),tienePac=!!f.pac;
+    let fc='libre';if(tienePac&&conf==='CONFIRMA')fc='confirmada';else if(tienePac&&conf==='CANCELA')fc='cancelada';else if(tienePac)fc='pendiente';
+    let cls='conf-pendiente',lbl='? Pendiente';if(conf==='CONFIRMA'){cls='conf-confirma';lbl='✓ Confirma';}if(conf==='CANCELA'){cls='conf-cancela';lbl='✕ Cancela';}
+    const tieneWA=f.pac&&f.tel;const part=(osNombreBase(f.os||''))==='PARTICULAR';
+    return`<div class="fila ${fc}"><div class="td td-hora">${f.hora}</div><div class="td td-pac"><input class="inp-inline" value="${f.pac||''}" placeholder="— disponible —" onchange="editarCampo(${idx},'pac',this.value)" onblur="editarCampo(${idx},'pac',this.value)"/></div><div class="td"><select class="inp-inline inp-os ${part?'part':''}" onchange="editarCampo(${idx},'os',this.value)">${osOpciones(f.os)}</select></div><div class="td td-tel"><input class="inp-inline inp-tel" value="${f.tel||''}" placeholder="—" onchange="editarCampo(${idx},'tel',this.value)" onblur="editarCampo(${idx},'tel',this.value)"/></div><div class="td td-conf"><button class="conf-btn ${cls}" onclick="ciclar(${idx})">${lbl}</button></div><div class="td">${tieneWA?`<button class="wa-btn" onclick="abrirWA(${idx})">${svgWA()}</button>`:`<div class="wa-btn off">${svgWA()}</div>`}</div></div>`;
+  }).join('');
+}
+
+// ── WA ──────────────────────────────────────────────────────────
+function abrirWA(idx){const fecha=dias[diaActivo].fecha;const f=filas[fecha][idx];if(!f.pac||!f.tel)return;document.getElementById('m-nombre').textContent=f.pac;document.getElementById('m-meta').textContent=f.hora+'  ·  '+f.os+'  ·  '+f.tel;document.getElementById('m-msg').textContent=mensaje(f,fecha);document.getElementById('m-link').href=waLink(f,fecha);document.getElementById('overlay-wa').classList.add('open');}
+function cerrarModalWA(){document.getElementById('overlay-wa').classList.remove('open');}
+
+// ── ESPERA ──────────────────────────────────────────────────────
+const EST=['en espera','contactada','asignada'];
+function estCls(e){if(e==='contactada')return'conf-confirma';if(e==='asignada')return'conf-pendiente';return'conf-cancela';}
+function estLbl(e){if(e==='contactada')return'✓ Contactada';if(e==='asignada')return'→ Asignada';return'⏳ En espera';}
+function ciclarEspera(idx){espera[idx].estado=EST[(EST.indexOf(espera[idx].estado||'en espera')+1)%3];guardar();renderEspera();renderEsperaStats();renderEsperaPill();}
+function eliminarEspera(idx){espera.splice(idx,1);guardar();renderEspera();renderEsperaStats();renderEsperaPill();}
+function agregarEspera(){
+  const pac=document.getElementById('e-pac').value.trim();if(!pac){alert('Ingresá el nombre');return;}
+  espera.push({pac,os:document.getElementById('e-os').value,tel:document.getElementById('e-tel').value.trim(),fecha:document.getElementById('e-fecha').value,hora:document.getElementById('e-hora').value,estado:document.getElementById('e-estado').value});
+  guardar();['e-pac','e-tel','e-fecha','e-hora'].forEach(id=>document.getElementById(id).value='');document.getElementById('e-os').innerHTML=osOpciones('');
+  renderEspera();renderEsperaStats();renderEsperaPill();
+}
+function renderEsperaPill(){document.getElementById('espera-pill').textContent=espera.length;}
+function renderEsperaStats(){
+  const t=espera.length,ct=espera.filter(e=>e.estado==='contactada').length,as=espera.filter(e=>e.estado==='asignada').length,pe=espera.filter(e=>!e.estado||e.estado==='en espera').length;
+  document.getElementById('espera-stats').innerHTML=`<div class="stat-item"><span class="stat-num">${t}</span> en lista</div><div class="stat-div"></div><div class="stat-item"><span class="stat-num amber">${pe}</span> en espera</div><div class="stat-div"></div><div class="stat-item"><span class="stat-num sage">${ct}</span> contactadas</div>${as?`<div class="stat-div"></div><div class="stat-item"><span class="stat-num">${as}</span> asignadas</div>`:''}`;
+}
+function renderEspera(){
+  if(!espera.length){document.getElementById('espera-body').innerHTML='<div class="empty">Lista vacía</div>';return;}
+  document.getElementById('espera-body').innerHTML=espera.map((f,idx)=>{
+    const est=f.estado||'en espera';const tieneWA=f.pac&&f.tel;const part=(osNombreBase(f.os||''))==='PARTICULAR';
+    const tel=(f.tel||'').replace(/\D/g,'');const num=tel.startsWith('54')?tel:'54'+tel;
+    const link=`https://wa.me/${num}?text=${encodeURIComponent('Hola, tenemos un turno disponible. ¿Le interesa?')}`;
+    return`<div class="fila-espera"><div class="td" style="font-family:var(--mono);font-size:11px;color:var(--ink3);">#${idx+1}</div><div class="td td-pac"><input class="inp-inline" value="${f.pac||''}" placeholder="Paciente" onchange="editarCampo(${idx},'pac',this.value,'espera')" onblur="editarCampo(${idx},'pac',this.value,'espera')"/></div><div class="td"><select class="inp-inline inp-os ${part?'part':''}" onchange="editarCampo(${idx},'os',this.value,'espera')">${osOpciones(f.os)}</select></div><div class="td td-tel"><input class="inp-inline inp-tel" value="${f.tel||''}" placeholder="—" onchange="editarCampo(${idx},'tel',this.value,'espera')" onblur="editarCampo(${idx},'tel',this.value,'espera')"/></div><div class="td"><input class="inp-inline" style="font-family:var(--mono);font-size:12px;" type="date" value="${f.fecha||''}" onchange="editarCampo(${idx},'fecha',this.value,'espera')"/></div><div class="td"><input class="inp-inline" style="font-family:var(--mono);font-size:12px;" type="time" value="${f.hora||''}" step="1800" onchange="editarCampo(${idx},'hora',this.value,'espera')"/></div><div class="td td-conf"><button class="conf-btn ${estCls(est)}" onclick="ciclarEspera(${idx})" style="margin-right:5px;">${estLbl(est)}</button><button onclick="eliminarEspera(${idx})" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:13px;">✕</button></div><div class="td">${tieneWA?`<a class="wa-btn" href="${link}" target="_blank">${svgWA()}</a>`:`<div class="wa-btn off">${svgWA()}</div>`}</div></div>`;
+  }).join('');
+}
+
+// ── DIAS ────────────────────────────────────────────────────────
+function abrirModalDia(){if(dias.length){const u=new Date(dias[dias.length-1].fecha+'T12:00:00');u.setDate(u.getDate()+1);document.getElementById('nd-fecha').value=u.toISOString().split('T')[0];}document.getElementById('nd-label').value='';document.getElementById('overlay-dia').classList.add('open');}
+function cerrarModalDia(){document.getElementById('overlay-dia').classList.remove('open');}
+function confirmarNuevoDia(){
+  const fecha=document.getElementById('nd-fecha').value;if(!fecha){alert('Seleccioná una fecha');return;}if(dias.find(d=>d.fecha===fecha)){alert('Ya existe');cerrarModalDia();return;}
+  const label=document.getElementById('nd-label').value.trim()||LABELS[new Date(fecha+'T12:00:00').getDay()]||'Día';
+  dias.push({fecha,label});dias.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  if(!filas[fecha]||filas[fecha].length===0)filas[fecha]=generarSlots(fecha);
+  diaActivo=dias.findIndex(d=>d.fecha===fecha);guardar();cerrarModalDia();render();
+}
+
+function agregarFila(){
+  const hora=document.getElementById('n-hora').value;if(!hora){alert('Ingresá la hora');return;}
+  const fecha=dias[diaActivo].fecha;if(!filas[fecha])filas[fecha]=[];
+  filas[fecha].push({hora,pac:document.getElementById('n-pac').value.trim(),os:document.getElementById('n-os').value,tel:document.getElementById('n-tel').value.trim(),conf:document.getElementById('n-conf').value});
+  filas[fecha].sort((a,b)=>a.hora.localeCompare(b.hora));guardar();
+  ['n-hora','n-pac','n-tel'].forEach(id=>document.getElementById(id).value='');document.getElementById('n-conf').value='';
+  renderTabla();renderStats();renderDias();
+}
+
+function render(){renderDias();renderStats();renderTabla();renderEsperaPill();}
+
+// ── INIT ────────────────────────────────────────────────────────
+(async()=>{
+  document.getElementById('tabla-body').innerHTML='<div class="empty">Cargando datos...</div>';
+  await cargar();
+  if(!dias.length){dias=[{fecha:'2025-04-13',label:'Lunes'},{fecha:'2025-04-14',label:'Martes'},{fecha:'2025-04-15',label:'Miércoles'},{fecha:'2025-04-16',label:'Jueves'},{fecha:'2025-04-17',label:'Viernes'}];}
+  document.getElementById('n-os').innerHTML=osOpciones('');
+  document.getElementById('e-os').innerHTML=osOpciones('');
+  render();
+  // exponer al HTML (necesario por type="module")
+  const g=window;
+  g.switchDia=switchDia;g.switchVista=switchVista;g.ocultarDia=ocultarDia;g.restaurarDia=restaurarDia;g.toggleOcultos=toggleOcultos;
+  g.abrirModalDia=abrirModalDia;g.cerrarModalDia=cerrarModalDia;g.confirmarNuevoDia=confirmarNuevoDia;
+  g.abrirModalOS=abrirModalOS;g.cerrarModalOS=cerrarModalOS;
+  g.ciclar=ciclar;g.editarCampo=editarCampo;g.abrirWA=abrirWA;g.cerrarModalWA=cerrarModalWA;
+  g.ciclarEspera=ciclarEspera;g.eliminarEspera=eliminarEspera;g.agregarEspera=agregarEspera;g.agregarFila=agregarFila;
+  g.guardarHTML=guardarHTML;g.exportarDatos=exportarDatos;g.restaurarDatos=restaurarDatos;g.importCSV=importCSV;
+})();
+</script>
+</body>
+</html>
