@@ -459,7 +459,22 @@ function exportarDatos(){
 function restaurarDatos(e){
   const file=e.target.files[0];if(!file)return;
   const r=new FileReader();
-  r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.dias)dias=d.dias;if(d.filas)filas=d.filas;if(d.espera)espera=d.espera;if(d.obrasSociales)obrasSociales=d.obrasSociales;diaActivo=0;guardar();render();alert('✓ Datos restaurados.');}catch(err){alert('Archivo inválido.');}};
+  r.onload=async ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.dias)dias=d.dias;
+      if(d.filas)filas=d.filas;
+      if(d.espera)espera=d.espera;
+      if(d.obrasSociales)obrasSociales=d.obrasSociales;
+      diaActivo=0;
+      await guardar();
+      render();
+      alert('✓ Datos restaurados y guardados en Firebase.');
+    }catch(err){
+      console.error(err);
+      alert('Error al restaurar: '+err.message);
+    }
+  };
   r.readAsText(file);e.target.value='';
 }
 function importCSV(e){
@@ -659,7 +674,18 @@ function renderEspera(){
 }
 
 // ── DIAS ────────────────────────────────────────────────────────
-function abrirModalDia(){if(dias.length){const u=new Date(dias[dias.length-1].fecha+'T12:00:00');u.setDate(u.getDate()+1);document.getElementById('nd-fecha').value=u.toISOString().split('T')[0];}document.getElementById('nd-label').value='';document.getElementById('overlay-dia').classList.add('open');}
+function abrirModalDia(){
+  if(dias.length){
+    const u=new Date(dias[dias.length-1].fecha+'T12:00:00');
+    u.setDate(u.getDate()+1);
+    // saltar fines de semana
+    while(u.getDay()===0||u.getDay()===6) u.setDate(u.getDate()+1);
+    document.getElementById('nd-fecha').value=u.toISOString().split('T')[0];
+    const label=LABELS[u.getDay()]||'';
+    document.getElementById('nd-label').value=label;
+  }
+  document.getElementById('overlay-dia').classList.add('open');
+}
 function cerrarModalDia(){document.getElementById('overlay-dia').classList.remove('open');}
 function confirmarNuevoDia(){
   const fecha=document.getElementById('nd-fecha').value;if(!fecha){alert('Seleccioná una fecha');return;}if(dias.find(d=>d.fecha===fecha)){alert('Ya existe');cerrarModalDia();return;}
