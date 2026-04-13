@@ -65,10 +65,12 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
 .fila:last-child{border-bottom:none;}
 .fila.libre{background:#f0fdf4;}.fila.libre:hover{background:#e6f9ec;}
 .fila.libre .td{border-right-color:#c6f0d0;color:#2d6a4f;}
-.fila.libre .td-hora{color:#2d6a4f;}
-.fila.libre .inp-inline{color:#2d6a4f;}
-.fila.libre .inp-inline::placeholder{color:#7bbf96;}
-.fila.libre .inp-os,.fila.libre .inp-tel{color:#3d6b55;}
+.fila.libre{background:#60F9B2;}.fila.libre:hover{background:#4de8a0;}
+.fila.libre .td{border-right-color:#3dd494;}
+.fila.libre .td-hora{color:#0a4a2e;font-weight:600;}
+.fila.libre .inp-inline{color:#0a4a2e;}
+.fila.libre .inp-inline::placeholder{color:#1a7a4a;}
+.fila.libre .inp-os,.fila.libre .inp-tel{color:#0a4a2e;}
 .fila.pendiente{background:#fffbeb;}.fila.pendiente:hover{background:#fef3c7;}
 .fila.pendiente .td{border-right-color:#fcd89a;}
 .fila.pendiente .td-hora,.fila.pendiente .inp-inline{color:#92400e;}
@@ -162,6 +164,13 @@ select.inp-cel{cursor:pointer;}
     <span class="topbar-semana" id="lbl-semana"></span>
   </div>
   <div class="topbar-right">
+    <div style="position:relative;display:flex;align-items:center;">
+      <input type="text" id="buscador" placeholder="🔍 Buscar paciente..." 
+        style="font-family:var(--sans);font-size:11px;padding:5px 10px;border-radius:5px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:white;outline:none;width:180px;"
+        oninput="buscarPaciente(this.value)"
+        onfocus="this.style.background='rgba(255,255,255,0.18)'"
+        onblur="this.style.background='rgba(255,255,255,0.1)'"/>
+    </div>
     <span id="save-status" style="font-size:11px;color:rgba(255,255,255,0.4);margin-right:4px;"></span>
     <button class="btn-top" onclick="guardarHTML()">💾 Guardar</button>
     <button class="btn-top" onclick="exportarDatos()">↓ Exportar</button>
@@ -229,6 +238,19 @@ select.inp-cel{cursor:pointer;}
     </div>
   </div>
 </main>
+
+<!-- MODAL: BÚSQUEDA PACIENTE -->
+<div class="overlay" id="overlay-busqueda" onclick="if(event.target===this)cerrarBusqueda()">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <span class="modal-title" id="busqueda-titulo">Resultados</span>
+      <button class="modal-close" onclick="cerrarBusqueda()">×</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <div id="busqueda-resultados" style="max-height:500px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL: OBRAS SOCIALES -->
 <div class="overlay" id="overlay-os" onclick="if(event.target===this)cerrarModalOS()">
@@ -475,7 +497,63 @@ function switchVista(vista){
 }
 
 // ── DIAS ────────────────────────────────────────────────────────
+// ── BÚSQUEDA ────────────────────────────────────────────────────
+let busquedaTimeout = null;
+function buscarPaciente(query) {
+  clearTimeout(busquedaTimeout);
+  if (!query.trim() || query.length < 2) { cerrarBusqueda(); return; }
+  busquedaTimeout = setTimeout(() => ejecutarBusqueda(query.trim()), 300);
+}
+function ejecutarBusqueda(query) {
+  const q = query.toLowerCase();
+  const resultados = [];
+  Object.keys(filas).forEach(fecha => {
+    (filas[fecha]||[]).forEach(f => {
+      if (f.pac && f.pac.toLowerCase().includes(q)) resultados.push({...f, fecha});
+    });
+  });
+  resultados.sort((a,b) => a.fecha.localeCompare(b.fecha));
+  const titulo = resultados.length
+    ? `${resultados.length} turno${resultados.length>1?'s':''} — "${query}"`
+    : `Sin resultados para "${query}"`;
+  document.getElementById('busqueda-titulo').textContent = titulo;
+  const confCls = {CONFIRMA:'conf-confirma',CANCELA:'conf-cancela'};
+  const confLbl = {CONFIRMA:'✓ Confirma',CANCELA:'✕ Cancela'};
+  document.getElementById('busqueda-resultados').innerHTML = resultados.length
+    ? resultados.map(r => {
+        const [y,m,d] = r.fecha.split('-');
+        const diaLabel = (dias.find(di=>di.fecha===r.fecha)?.label)||'';
+        const confVal  = (r.conf||'').toUpperCase();
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--rule);">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:500;color:var(--ink);">${r.pac}</div>
+            <div style="font-size:12px;color:var(--ink2);margin-top:2px;">
+              ${diaLabel} ${parseInt(d)}/${parseInt(m)}/${y} · <span style="font-family:var(--mono);">${r.hora}</span>
+              ${r.os?`· <span style="font-size:11px;">${r.os}</span>`:''}
+            </div>
+          </div>
+          <span class="conf-btn ${confCls[confVal]||'conf-pendiente'}">${confLbl[confVal]||'? Pendiente'}</span>
+        </div>`;
+      }).join('')
+    : '<div class="empty">No se encontraron turnos para esa paciente</div>';
+  document.getElementById('overlay-busqueda').classList.add('open');
+}
+function cerrarBusqueda() {
+  document.getElementById('overlay-busqueda').classList.remove('open');
+  document.getElementById('buscador').value = '';
+}
+
+// ── DIAS ─────────────────────────────────────────────────────────
 function ocultarDia(i,e){e.stopPropagation();dias[i].oculto=true;const vis=dias.filter(d=>!d.oculto);if(vis.length>0)diaActivo=dias.indexOf(vis[0]);guardar();renderDias();renderTabla();renderStats();}
+function eliminarDia(i,e){
+  e.stopPropagation();
+  const d=dias[i];
+  if(!confirm(`¿Eliminar definitivamente "${d.label} ${fmtF(d.fecha)}"?\nEsto borrará todos los turnos de ese día.`))return;
+  delete filas[d.fecha];
+  dias.splice(i,1);
+  if(diaActivo>=dias.filter(d=>!d.oculto).length) diaActivo=0;
+  guardar();renderDias();renderTabla();renderStats();
+}
 function toggleOcultos(){mostrandoOcultos=!mostrandoOcultos;renderDias();}
 function restaurarDia(i,e){e.stopPropagation();dias[i].oculto=false;guardar();renderDias();}
 function switchDia(i){vistaActiva='turnos';diaActivo=i;document.getElementById('main-turnos').style.display='';document.getElementById('main-espera').style.display='none';document.getElementById('btn-espera').classList.remove('active');renderDias();renderTabla();renderStats();}
@@ -484,7 +562,7 @@ function renderDias(){
   document.getElementById('lbl-semana').textContent=fmtSemana();
   const vis=dias.filter(d=>!d.oculto);const oc=dias.filter(d=>d.oculto);
   const tVis=vis.map(d=>{const i=dias.indexOf(d);const cnt=(filas[d.fecha]||[]).filter(f=>f.pac).length;
-    return`<button class="dia-btn ${i===diaActivo&&vistaActiva==='turnos'?'active':''}" onclick="switchDia(${i})">${d.label}<span class="dia-btn-fecha">${fmtF(d.fecha)}</span><span class="dia-pill">${cnt}</span><span class="dia-ocultar" onclick="ocultarDia(${i},event)">×</span></button>`;}).join('');
+    return`<button class="dia-btn ${i===diaActivo&&vistaActiva==='turnos'?'active':''}" onclick="switchDia(${i})">${d.label}<span class="dia-btn-fecha">${fmtF(d.fecha)}</span><span class="dia-pill">${cnt}</span><span class="dia-ocultar" onclick="ocultarDia(${i},event)" title="Ocultar">○</span><span class="dia-ocultar" onclick="eliminarDia(${i},event)" title="Eliminar" style="color:var(--rose);">✕</span></button>`;}).join('');
   const tOc=mostrandoOcultos?oc.map(d=>{const i=dias.indexOf(d);return`<button class="dia-btn dia-btn-oculto" onclick="restaurarDia(${i},event)">${d.label}<span class="dia-btn-fecha">${fmtF(d.fecha)}</span></button>`;}).join(''):'';
   const btnOc=oc.length?`<button class="dia-btn-ocultos" onclick="toggleOcultos()">${mostrandoOcultos?'▲':'▼'} ${oc.length} oculto${oc.length>1?'s':''}</button>`:'';
   document.getElementById('dias-tabs-wrap').innerHTML=tVis+tOc+btnOc+`<button class="dia-btn-add" onclick="abrirModalDia()">+ Agregar día</button>`;
@@ -528,7 +606,36 @@ function cerrarModalWA(){document.getElementById('overlay-wa').classList.remove(
 const EST=['en espera','contactada','asignada'];
 function estCls(e){if(e==='contactada')return'conf-confirma';if(e==='asignada')return'conf-pendiente';return'conf-cancela';}
 function estLbl(e){if(e==='contactada')return'✓ Contactada';if(e==='asignada')return'→ Asignada';return'⏳ En espera';}
-function ciclarEspera(idx){espera[idx].estado=EST[(EST.indexOf(espera[idx].estado||'en espera')+1)%3];guardar();renderEspera();renderEsperaStats();renderEsperaPill();}
+function ciclarEspera(idx){
+  const e=espera[idx];
+  const anterior=e.estado||'en espera';
+  e.estado=EST[(EST.indexOf(anterior)+1)%3];
+
+  // Si pasó a "asignada" y tiene fecha y hora → agendar automáticamente
+  if(e.estado==='asignada' && e.fecha && e.hora && e.pac){
+    const diaExistente=dias.find(d=>d.fecha===e.fecha);
+    if(!diaExistente){
+      // Crear el día si no existe
+      const diaSem=new Date(e.fecha+'T12:00:00').getDay();
+      dias.push({fecha:e.fecha,label:LABELS[diaSem]||'Día'});
+      dias.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+      filas[e.fecha]=generarSlots(e.fecha);
+    }
+    if(!filas[e.fecha]) filas[e.fecha]=generarSlots(e.fecha);
+    // Buscar el slot de esa hora y completarlo
+    const slot=filas[e.fecha].find(f=>f.hora===e.hora);
+    if(slot){
+      slot.pac=e.pac; slot.os=e.os||''; slot.tel=e.tel||''; slot.conf='';
+      alert(`✓ Turno agendado: ${e.pac} el ${e.fecha} a las ${e.hora}`);
+    } else {
+      // Si no hay slot exacto, agregar la fila
+      filas[e.fecha].push({hora:e.hora,pac:e.pac,os:e.os||'',tel:e.tel||'',conf:''});
+      filas[e.fecha].sort((a,b)=>a.hora.localeCompare(b.hora));
+      alert(`✓ Turno agendado como sobreturno: ${e.pac} el ${e.fecha} a las ${e.hora}`);
+    }
+  }
+  guardar();renderEspera();renderEsperaStats();renderEsperaPill();renderDias();
+}
 function eliminarEspera(idx){espera.splice(idx,1);guardar();renderEspera();renderEsperaStats();renderEsperaPill();}
 function agregarEspera(){
   const pac=document.getElementById('e-pac').value.trim();if(!pac){alert('Ingresá el nombre');return;}
@@ -583,7 +690,7 @@ function render(){renderDias();renderStats();renderTabla();renderEsperaPill();}
   render();
   // exponer al HTML (necesario por type="module")
   const g=window;
-  g.switchDia=switchDia;g.switchVista=switchVista;g.ocultarDia=ocultarDia;g.restaurarDia=restaurarDia;g.toggleOcultos=toggleOcultos;
+  g.buscarPaciente=buscarPaciente;g.cerrarBusqueda=cerrarBusqueda;g.switchVista=switchVista;g.ocultarDia=ocultarDia;g.eliminarDia=eliminarDia;g.restaurarDia=restaurarDia;g.toggleOcultos=toggleOcultos;g.switchDia=switchDia;
   g.abrirModalDia=abrirModalDia;g.cerrarModalDia=cerrarModalDia;g.confirmarNuevoDia=confirmarNuevoDia;
   g.abrirModalOS=abrirModalOS;g.cerrarModalOS=cerrarModalOS;
   g.ciclar=ciclar;g.editarCampo=editarCampo;g.abrirWA=abrirWA;g.cerrarModalWA=cerrarModalWA;
