@@ -423,14 +423,18 @@ async function cargar(){
     const snap=await getDoc(DOC);
     if(snap.exists()){
       const d=snap.data();
-      if(d.dias)dias=d.dias;if(d.filas)filas=d.filas;if(d.espera)espera=d.espera;if(d.obrasSociales)obrasSociales=d.obrasSociales;
-      return true;
+      // Solo usar Firebase si tiene días cargados
+      if(d.dias && d.dias.length>0){
+        dias=d.dias;filas=d.filas||filas;espera=d.espera||espera;obrasSociales=d.obrasSociales||obrasSociales;
+        return true;
+      }
     }
+    // Firebase vacío o sin datos → guardar los datos incrustados en Firebase
+    await setDoc(DOC,{dias,filas,espera,obrasSociales});
+    setStatus('ok');
   }catch(e){
-    // Firebase falló — usar localStorage si existe
-    try{const b=localStorage.getItem('tf_bk');if(b){const d=JSON.parse(b);dias=d.dias||dias;filas=d.filas||filas;espera=d.espera||espera;obrasSociales=d.obrasSociales||obrasSociales;}}catch(e2){}
+    try{const b=localStorage.getItem('tf_bk');if(b){const d=JSON.parse(b);if(d.dias&&d.dias.length>0){dias=d.dias;filas=d.filas||filas;espera=d.espera||espera;obrasSociales=d.obrasSociales||obrasSociales;}}}catch(e2){}
   }
-  // Si llegamos acá, los datos incrustados ya están cargados en las variables
   return false;
 }
 
