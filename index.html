@@ -58,8 +58,10 @@ body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height
 .stat-div{width:1px;height:16px;background:var(--rule2);}
 
 .tabla-head{display:grid;grid-template-columns:60px minmax(160px,260px) 180px 140px 120px 48px;background:var(--ink);color:rgba(255,255,255,0.5);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;font-family:var(--mono);}
-.th{padding:8px 12px;border-right:1px solid rgba(255,255,255,0.07);}
+.th{padding:8px 12px;border-right:1px solid rgba(255,255,255,0.07);position:relative;}
 .th:last-child{border-right:none;text-align:center;}
+.resize-handle{position:absolute;right:0;top:0;width:6px;height:100%;cursor:col-resize;z-index:5;}
+.resize-handle:hover,.resize-handle.dragging{background:rgba(255,255,255,0.3);}
 
 .fila{display:grid;grid-template-columns:60px minmax(160px,260px) 180px 140px 120px 48px;border-bottom:1px solid var(--rule);align-items:stretch;}
 .fila:last-child{border-bottom:none;}
@@ -190,12 +192,12 @@ select.inp-cel{cursor:pointer;}
 <main class="main" id="main-turnos">
   <div class="stats-row" id="stats-row"></div>
   <div class="tabla">
-    <div class="tabla-head">
-      <div class="th">Hora</div>
-      <div class="th">Paciente</div>
-      <div class="th">Obra Social</div>
-      <div class="th">Teléfono</div>
-      <div class="th" style="text-align:center;">Confirmó</div>
+    <div class="tabla-head" id="tabla-head">
+      <div class="th">Hora<span class="resize-handle" data-col="0"></span></div>
+      <div class="th">Paciente<span class="resize-handle" data-col="1"></span></div>
+      <div class="th">Obra Social<span class="resize-handle" data-col="2"></span></div>
+      <div class="th">Teléfono<span class="resize-handle" data-col="3"></span></div>
+      <div class="th" style="text-align:center;">Confirmó<span class="resize-handle" data-col="4"></span></div>
       <div class="th" style="text-align:center;">WA</div>
     </div>
     <div id="tabla-body"></div>
@@ -585,6 +587,47 @@ function renderStats(){
   document.getElementById('stats-row').innerHTML=`<div class="stat-item"><span class="stat-num">${total}</span> pacientes</div><div class="stat-div"></div><div class="stat-item"><span class="stat-num sage">${conf}</span> confirmadas</div><div class="stat-div"></div><div class="stat-item"><span class="stat-num amber">${pend}</span> pendientes</div>${canc?`<div class="stat-div"></div><div class="stat-item"><span class="stat-num rose">${canc}</span> canceladas</div>`:''}`;
 }
 
+// ── RESIZE COLUMNAS ──────────────────────────────────────────────
+// Anchos iniciales en px para cada columna (índice 0-5)
+let colWidths = [60, 220, 180, 140, 120, 48];
+
+function aplicarAnchos(){
+  const template = colWidths.map(w=>w+'px').join(' ');
+  document.querySelectorAll('.tabla-head,.fila,.fila-nueva').forEach(el=>{
+    el.style.gridTemplateColumns = template;
+  });
+}
+
+function initResize(){
+  document.querySelectorAll('.resize-handle').forEach(handle=>{
+    let startX, startW, colIdx;
+    handle.addEventListener('mousedown', e=>{
+      e.preventDefault();
+      colIdx  = parseInt(handle.dataset.col);
+      startX  = e.clientX;
+      startW  = colWidths[colIdx];
+      handle.classList.add('dragging');
+      document.body.style.cursor='col-resize';
+      document.body.style.userSelect='none';
+
+      function onMove(e){
+        const diff = e.clientX - startX;
+        colWidths[colIdx] = Math.max(40, startW + diff);
+        aplicarAnchos();
+      }
+      function onUp(){
+        handle.classList.remove('dragging');
+        document.body.style.cursor='';
+        document.body.style.userSelect='';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+
 // ── TABLA ───────────────────────────────────────────────────────
 function ciclar(idx){
   const fecha=dias[diaActivo].fecha;const estados=['','CONFIRMA','CANCELA'];const actual=(filas[fecha][idx].conf||'').toUpperCase();
@@ -597,7 +640,7 @@ function editarCampo(idx,campo,valor,tabla='turnos'){
 }
 function renderTabla(){
   const fecha=dias[diaActivo]?.fecha;const lista=filas[fecha]||[];
-  if(!lista.length){document.getElementById('tabla-body').innerHTML='<div class="empty">Sin turnos — usá la fila de abajo para agregar</div>';return;}
+  if(!lista.length){document.getElementById('tabla-body').innerHTML='<div class="empty">Sin turnos — usá la fila de abajo para agregar</div>';aplicarAnchos();return;}
   document.getElementById('tabla-body').innerHTML=lista.map((f,idx)=>{
     const conf=(f.conf||'').toUpperCase(),tienePac=!!f.pac;
     let fc='libre';if(tienePac&&conf==='CONFIRMA')fc='confirmada';else if(tienePac&&conf==='CANCELA')fc='cancelada';else if(tienePac)fc='pendiente';
@@ -605,6 +648,7 @@ function renderTabla(){
     const tieneWA=f.pac&&f.tel;const part=(osNombreBase(f.os||''))==='PARTICULAR';
     return`<div class="fila ${fc}"><div class="td td-hora">${f.hora}</div><div class="td td-pac"><input class="inp-inline" value="${f.pac||''}" placeholder="— disponible —" onchange="editarCampo(${idx},'pac',this.value)" onblur="editarCampo(${idx},'pac',this.value)"/></div><div class="td"><select class="inp-inline inp-os ${part?'part':''}" onchange="editarCampo(${idx},'os',this.value)">${osOpciones(f.os)}</select></div><div class="td td-tel" style="gap:6px;"><input class="inp-inline inp-tel" value="${f.tel||''}" placeholder="—" onchange="editarCampo(${idx},'tel',this.value)" onblur="editarCampo(${idx},'tel',this.value)" style="flex:1;min-width:0;"/>${f.tel?`<button onclick="copiarTexto('${f.tel.replace(/'/g,"\\'")}',this)" title="Copiar número" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.5;flex-shrink:0;" >📋</button>`:''}</div><div class="td td-conf"><button class="conf-btn ${cls}" onclick="ciclar(${idx})">${lbl}</button></div><div class="td">${tieneWA?`<button class="wa-btn" onclick="abrirWA(${idx})">${svgWA()}</button>`:`<div class="wa-btn off">${svgWA()}</div>`}</div></div>`;
   }).join('');
+  aplicarAnchos();
 }
 
 // ── WA ──────────────────────────────────────────────────────────
@@ -739,6 +783,7 @@ function render(){renderDias();renderStats();renderTabla();renderEsperaPill();}
   document.getElementById('n-os').innerHTML=osOpciones('');
   document.getElementById('e-os').innerHTML=osOpciones('');
   render();
+  initResize();
   // exponer al HTML (necesario por type="module")
   const g=window;
   g.buscarPaciente=buscarPaciente;g.cerrarBusqueda=cerrarBusqueda;g.switchVista=switchVista;g.ocultarDia=ocultarDia;g.eliminarDia=eliminarDia;g.restaurarDia=restaurarDia;g.toggleOcultos=toggleOcultos;g.switchDia=switchDia;
