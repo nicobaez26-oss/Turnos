@@ -297,7 +297,8 @@ select.inp-cel{cursor:pointer;}
       <div class="msg-burbuja" id="m-msg"></div>
       <div class="wa-actions">
         <button class="btn-cancel" onclick="cerrarModalWA()">Cerrar</button>
-        <a id="m-link" href="#" target="_blank" style="text-decoration:none;"><button class="btn-wa-open">Abrir WhatsApp ↗</button></a>
+        <button class="btn-cancel" onclick="copiarMensaje()" id="btn-copiar-msg" title="Copiar mensaje">📋 Copiar mensaje</button>
+        <button class="btn-wa-open" onclick="abrirWAWeb()">Abrir WhatsApp ↗</button>
       </div>
     </div>
   </div>
@@ -602,13 +603,44 @@ function renderTabla(){
     let fc='libre';if(tienePac&&conf==='CONFIRMA')fc='confirmada';else if(tienePac&&conf==='CANCELA')fc='cancelada';else if(tienePac)fc='pendiente';
     let cls='conf-pendiente',lbl='? Pendiente';if(conf==='CONFIRMA'){cls='conf-confirma';lbl='✓ Confirma';}if(conf==='CANCELA'){cls='conf-cancela';lbl='✕ Cancela';}
     const tieneWA=f.pac&&f.tel;const part=(osNombreBase(f.os||''))==='PARTICULAR';
-    return`<div class="fila ${fc}"><div class="td td-hora">${f.hora}</div><div class="td td-pac"><input class="inp-inline" value="${f.pac||''}" placeholder="— disponible —" onchange="editarCampo(${idx},'pac',this.value)" onblur="editarCampo(${idx},'pac',this.value)"/></div><div class="td"><select class="inp-inline inp-os ${part?'part':''}" onchange="editarCampo(${idx},'os',this.value)">${osOpciones(f.os)}</select></div><div class="td td-tel"><input class="inp-inline inp-tel" value="${f.tel||''}" placeholder="—" onchange="editarCampo(${idx},'tel',this.value)" onblur="editarCampo(${idx},'tel',this.value)"/></div><div class="td td-conf"><button class="conf-btn ${cls}" onclick="ciclar(${idx})">${lbl}</button></div><div class="td">${tieneWA?`<button class="wa-btn" onclick="abrirWA(${idx})">${svgWA()}</button>`:`<div class="wa-btn off">${svgWA()}</div>`}</div></div>`;
+    return`<div class="fila ${fc}"><div class="td td-hora">${f.hora}</div><div class="td td-pac"><input class="inp-inline" value="${f.pac||''}" placeholder="— disponible —" onchange="editarCampo(${idx},'pac',this.value)" onblur="editarCampo(${idx},'pac',this.value)"/></div><div class="td"><select class="inp-inline inp-os ${part?'part':''}" onchange="editarCampo(${idx},'os',this.value)">${osOpciones(f.os)}</select></div><div class="td td-tel" style="gap:6px;"><input class="inp-inline inp-tel" value="${f.tel||''}" placeholder="—" onchange="editarCampo(${idx},'tel',this.value)" onblur="editarCampo(${idx},'tel',this.value)" style="flex:1;min-width:0;"/>${f.tel?`<button onclick="copiarTexto('${f.tel.replace(/'/g,"\\'")}',this)" title="Copiar número" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.5;flex-shrink:0;" >📋</button>`:''}</div><div class="td td-conf"><button class="conf-btn ${cls}" onclick="ciclar(${idx})">${lbl}</button></div><div class="td">${tieneWA?`<button class="wa-btn" onclick="abrirWA(${idx})">${svgWA()}</button>`:`<div class="wa-btn off">${svgWA()}</div>`}</div></div>`;
   }).join('');
 }
 
 // ── WA ──────────────────────────────────────────────────────────
-function abrirWA(idx){const fecha=dias[diaActivo].fecha;const f=filas[fecha][idx];if(!f.pac||!f.tel)return;document.getElementById('m-nombre').textContent=f.pac;document.getElementById('m-meta').textContent=f.hora+'  ·  '+f.os+'  ·  '+f.tel;document.getElementById('m-msg').textContent=mensaje(f,fecha);document.getElementById('m-link').href=waLink(f,fecha);document.getElementById('overlay-wa').classList.add('open');}
+let waUrl = '';
+function abrirWA(idx){
+  const fecha=dias[diaActivo].fecha;const f=filas[fecha][idx];if(!f.pac||!f.tel)return;
+  document.getElementById('m-nombre').textContent=f.pac;
+  document.getElementById('m-meta').textContent=f.hora+'  ·  '+f.os+'  ·  '+f.tel;
+  document.getElementById('m-msg').textContent=mensaje(f,fecha);
+  waUrl=waLink(f,fecha);
+  document.getElementById('overlay-wa').classList.add('open');
+}
 function cerrarModalWA(){document.getElementById('overlay-wa').classList.remove('open');}
+
+function abrirWAWeb(){
+  // Siempre reutiliza la misma pestaña llamada "whatsapp_tab"
+  window.open(waUrl,'whatsapp_tab');
+}
+
+function copiarTexto(texto, btn){
+  navigator.clipboard.writeText(texto).then(()=>{
+    const original=btn.textContent;
+    btn.textContent='✓';
+    btn.style.opacity='1';
+    setTimeout(()=>{btn.textContent=original;btn.style.opacity='0.5';},1500);
+  }).catch(()=>alert('No se pudo copiar'));
+}
+
+function copiarMensaje(){
+  const msg=document.getElementById('m-msg').textContent;
+  navigator.clipboard.writeText(msg).then(()=>{
+    const btn=document.getElementById('btn-copiar-msg');
+    btn.textContent='✓ Copiado';
+    setTimeout(()=>btn.textContent='📋 Copiar mensaje',1500);
+  }).catch(()=>alert('No se pudo copiar'));
+}
 
 // ── ESPERA ──────────────────────────────────────────────────────
 const EST=['en espera','contactada','asignada'];
@@ -712,7 +744,7 @@ function render(){renderDias();renderStats();renderTabla();renderEsperaPill();}
   g.buscarPaciente=buscarPaciente;g.cerrarBusqueda=cerrarBusqueda;g.switchVista=switchVista;g.ocultarDia=ocultarDia;g.eliminarDia=eliminarDia;g.restaurarDia=restaurarDia;g.toggleOcultos=toggleOcultos;g.switchDia=switchDia;
   g.abrirModalDia=abrirModalDia;g.cerrarModalDia=cerrarModalDia;g.confirmarNuevoDia=confirmarNuevoDia;
   g.abrirModalOS=abrirModalOS;g.cerrarModalOS=cerrarModalOS;
-  g.ciclar=ciclar;g.editarCampo=editarCampo;g.abrirWA=abrirWA;g.cerrarModalWA=cerrarModalWA;
+  g.ciclar=ciclar;g.editarCampo=editarCampo;g.abrirWA=abrirWA;g.cerrarModalWA=cerrarModalWA;g.abrirWAWeb=abrirWAWeb;g.copiarTexto=copiarTexto;g.copiarMensaje=copiarMensaje;
   g.ciclarEspera=ciclarEspera;g.eliminarEspera=eliminarEspera;g.agregarEspera=agregarEspera;g.agregarFila=agregarFila;
   g.guardarHTML=guardarHTML;g.exportarDatos=exportarDatos;g.restaurarDatos=restaurarDatos;g.importCSV=importCSV;
 })();
