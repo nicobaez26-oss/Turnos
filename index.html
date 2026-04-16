@@ -199,7 +199,7 @@ select.inp-cel{cursor:pointer;}
       <div class="th">Teléfono<span class="resize-handle" data-col="3"></span></div>
       <div class="th" style="text-align:center;">Confirmó<span class="resize-handle" data-col="4"></span></div>
       <div class="th" style="text-align:center;">WA<span class="resize-handle" data-col="5"></span></div>
-      <div class="th" style="text-align:center;">Disponibles</div>
+      <div class="th" style="text-align:center;">Reprogramar</div>
     </div>
     <div id="tabla-body"></div>
     <div class="fila-nueva">
@@ -650,25 +650,59 @@ function editarCampo(idx,campo,valor,tabla='turnos'){
   else{const fecha=dias[diaActivo]?.fecha;if(!fecha||!filas[fecha])return;filas[fecha][idx][campo]=valor.trim();}
   guardar();renderStats();renderDias();renderEsperaPill();
 }
-function turnosDisponibles(horaActual){
-  // Busca slots libres en días futuros a la misma hora o similares
-  const hoy = dias[diaActivo]?.fecha || '';
+function turnosDisponibles(horaActual, idxActual){
+  const fechaActual = dias[diaActivo]?.fecha || '';
   const disponibles = [];
   dias.forEach(d=>{
-    if(d.fecha <= hoy || d.oculto) return;
+    if(d.fecha <= fechaActual || d.oculto) return;
     const libres = (filas[d.fecha]||[]).filter(f=>!f.pac);
-    if(libres.length){
-      disponibles.push({label:`${d.label} ${fmtF(d.fecha)}`, libres});
-    }
+    if(libres.length) disponibles.push({fecha:d.fecha, label:`${d.label} ${fmtF(d.fecha)}`, libres});
   });
   if(!disponibles.length) return `<span style="font-size:10px;color:var(--ink3);">Sin disp.</span>`;
+  const total = disponibles.reduce((a,d)=>a+d.libres.length,0);
   const opts = disponibles.map(d=>
-    d.libres.map(f=>`<option value="${d.label}|${f.hora}">${d.label} ${f.hora}</option>`).join('')
+    `<optgroup label="${d.label}">` +
+    d.libres.map(f=>`<option value="${d.fecha}|${f.hora}|${d.label}">${f.hora}</option>`).join('') +
+    `</optgroup>`
   ).join('');
-  return `<select style="font-size:10px;font-family:var(--mono);border:none;background:none;color:var(--sage);cursor:pointer;max-width:100%;outline:none;" title="Turnos disponibles" onchange="if(this.value){const[dia,hora]=this.value.split('|');alert('Disponible: '+dia+' a las '+hora);this.value='';}">
-    <option value="">🗓 ${disponibles.reduce((a,d)=>a+d.libres.length,0)} libres</option>
+  return `<select style="font-size:10px;font-family:var(--mono);border:1px solid var(--rule2);background:var(--white);color:var(--sage);cursor:pointer;max-width:100%;outline:none;border-radius:4px;padding:2px 4px;"
+    title="Reprogramar turno"
+    onchange="reprogramar(${idxActual}, this)">
+    <option value="">🗓 ${total} libre${total!==1?'s':''}</option>
     ${opts}
   </select>`;
+}
+
+function reprogramar(idxOrigen, select){
+  const val = select.value;
+  if(!val){ return; }
+  const [fechaDest, horaDest, labelDest] = val.split('|');
+  const fechaOrigen = dias[diaActivo]?.fecha;
+  const fOrigen = filas[fechaOrigen]?.[idxOrigen];
+  if(!fOrigen || !fOrigen.pac){ select.value=''; return; }
+
+  const confirmar = confirm(`¿Reprogramar a ${fOrigen.pac}?\n\nDe: ${dias[diaActivo].label} ${fmtF(fechaOrigen)} ${fOrigen.hora}\nA:  ${labelDest} ${fmtF(fechaDest)} ${horaDest}`);
+  if(!confirmar){ select.value=''; return; }
+
+  // Buscar slot destino
+  const slotDest = (filas[fechaDest]||[]).find(f=>f.hora===horaDest);
+  if(!slotDest){ alert('No se encontró el slot destino'); select.value=''; return; }
+
+  // Copiar datos al destino
+  slotDest.pac  = fOrigen.pac;
+  slotDest.os   = fOrigen.os;
+  slotDest.tel  = fOrigen.tel;
+  slotDest.conf = '';
+
+  // Liberar origen
+  fOrigen.pac  = '';
+  fOrigen.os   = '';
+  fOrigen.tel  = '';
+  fOrigen.conf = '';
+
+  guardar();
+  renderTabla(); renderStats(); renderDias();
+  alert(`✓ Turno reprogramado a ${labelDest} ${horaDest}`);
 }
 
 function renderTabla(){
@@ -681,15 +715,15 @@ function renderTabla(){
     const tieneWA=f.pac&&f.tel;const part=(osNombreBase(f.os||''))==='PARTICULAR';
     const fecha_actual=dias[diaActivo].fecha;
     const msgTexto=tieneWA?mensaje(f,fecha_actual):'';
-    const btnCopiarMsg=tieneWA?`<button onclick="copiarTexto('${msgTexto.replace(/'/g,"\\'").replace(/\n/g,'\\n')}',this)" title="Copiar mensaje" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 3px;opacity:0.7;flex-shrink:0;">💬</button>`:'';
-    return`<div class="fila ${fc}">
+    const btnCopiarMsg=tieneWA?`<button onclick="copiarMensajeFila(this,'${msgTexto.replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/"/g,'&quot;')}')" title="Copiar mensaje" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 3px;opacity:0.7;flex-shrink:0;">💬</button>`:'';
+    return`<div class="fila ${fc}" id="fila-${idx}">
       <div class="td td-hora">${f.hora}</div>
       <div class="td td-pac"><input class="inp-inline" value="${f.pac||''}" placeholder="— disponible —" onchange="editarCampo(${idx},'pac',this.value)" onblur="editarCampo(${idx},'pac',this.value)"/></div>
       <div class="td"><select class="inp-inline inp-os ${part?'part':''}" onchange="editarCampo(${idx},'os',this.value)">${osOpciones(f.os)}</select></div>
       <div class="td td-tel" style="gap:4px;"><input class="inp-inline inp-tel" value="${f.tel||''}" placeholder="—" onchange="editarCampo(${idx},'tel',this.value)" onblur="editarCampo(${idx},'tel',this.value)" style="flex:1;min-width:0;"/>${f.tel?`<button onclick="copiarTexto('${f.tel.replace(/'/g,"\\'")}',this)" title="Copiar número" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 3px;opacity:0.5;flex-shrink:0;">📋</button>`:''}</div>
       <div class="td td-conf"><button class="conf-btn ${cls}" onclick="ciclar(${idx})">${lbl}</button></div>
       <div class="td" style="justify-content:center;gap:4px;">${tieneWA?`<button class="wa-btn" onclick="abrirWA(${idx})">${svgWA()}</button>`:`<div class="wa-btn off">${svgWA()}</div>`}${btnCopiarMsg}</div>
-      <div class="td" style="justify-content:center;">${turnosDisponibles(f.hora)}</div>
+      <div class="td" style="justify-content:center;">${turnosDisponibles(f.hora, idx)}</div>
     </div>`;
   }).join('');
   aplicarAnchos();
@@ -721,7 +755,39 @@ function copiarTexto(texto, btn){
   }).catch(()=>alert('No se pudo copiar'));
 }
 
-function copiarMensaje(){
+function copiarMensajeFila(btn, texto){
+  navigator.clipboard.writeText(texto.replace(/\\n/g,'\n')).then(()=>{
+    // colorear toda la fila
+    const fila = btn.closest('.fila');
+    if(fila){
+      fila.dataset.colorOriginal = fila.className;
+      // aplicar color a todos los td
+      fila.querySelectorAll('.td').forEach(td=>{
+        td.style.setProperty('background','#DA5A9A','important');
+        td.style.setProperty('color','#fff','important');
+        td.style.setProperty('border-right-color','#c04888','important');
+      });
+      fila.querySelectorAll('input,select').forEach(el=>{
+        el.style.setProperty('color','#fff','important');
+      });
+      // restaurar después de 2 segundos
+      setTimeout(()=>{
+        fila.querySelectorAll('.td').forEach(td=>{
+          td.style.removeProperty('background');
+          td.style.removeProperty('color');
+          td.style.removeProperty('border-right-color');
+        });
+        fila.querySelectorAll('input,select').forEach(el=>{
+          el.style.removeProperty('color');
+        });
+      }, 2000);
+    }
+    // feedback en el botón
+    const orig = btn.textContent;
+    btn.textContent='✓';
+    setTimeout(()=>btn.textContent=orig, 2000);
+  }).catch(()=>alert('No se pudo copiar'));
+}
   const msg=document.getElementById('m-msg').textContent;
   navigator.clipboard.writeText(msg).then(()=>{
     const btn=document.getElementById('btn-copiar-msg');
@@ -833,7 +899,7 @@ function render(){renderDias();renderStats();renderTabla();renderEsperaPill();}
   g.buscarPaciente=buscarPaciente;g.cerrarBusqueda=cerrarBusqueda;g.switchVista=switchVista;g.ocultarDia=ocultarDia;g.eliminarDia=eliminarDia;g.restaurarDia=restaurarDia;g.toggleOcultos=toggleOcultos;g.switchDia=switchDia;
   g.abrirModalDia=abrirModalDia;g.cerrarModalDia=cerrarModalDia;g.confirmarNuevoDia=confirmarNuevoDia;
   g.abrirModalOS=abrirModalOS;g.cerrarModalOS=cerrarModalOS;
-  g.ciclar=ciclar;g.editarCampo=editarCampo;g.abrirWA=abrirWA;g.cerrarModalWA=cerrarModalWA;g.abrirWAWeb=abrirWAWeb;g.copiarTexto=copiarTexto;g.copiarMensaje=copiarMensaje;
+  g.ciclar=ciclar;g.editarCampo=editarCampo;g.abrirWA=abrirWA;g.cerrarModalWA=cerrarModalWA;g.abrirWAWeb=abrirWAWeb;g.copiarTexto=copiarTexto;g.copiarMensaje=copiarMensaje;g.copiarMensajeFila=copiarMensajeFila;g.reprogramar=reprogramar;
   g.ciclarEspera=ciclarEspera;g.eliminarEspera=eliminarEspera;g.agregarEspera=agregarEspera;g.agregarFila=agregarFila;
   g.guardarHTML=guardarHTML;g.exportarDatos=exportarDatos;g.restaurarDatos=restaurarDatos;g.importCSV=importCSV;
 })();
