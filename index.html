@@ -423,13 +423,13 @@ async function cargar(){
     const snap=await getDoc(DOC);
     if(snap.exists()){
       const d=snap.data();
-      // Solo usar Firebase si tiene días cargados
       if(d.dias && d.dias.length>0){
         dias=d.dias;filas=d.filas||filas;espera=d.espera||espera;obrasSociales=d.obrasSociales||obrasSociales;
         return true;
       }
     }
-    // Firebase vacío o sin datos → guardar los datos incrustados en Firebase
+    // Firebase vacío → subir datos incrustados
+    setStatus('guardando');
     await setDoc(DOC,{dias,filas,espera,obrasSociales});
     setStatus('ok');
   }catch(e){
