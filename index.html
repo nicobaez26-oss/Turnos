@@ -198,16 +198,29 @@ select.inp-cel{cursor:pointer;}
       <div class="th">Obra Social<span class="resize-handle" data-col="2"></span></div>
       <div class="th">Teléfono<span class="resize-handle" data-col="3"></span></div>
       <div class="th" style="text-align:center;">Confirmó<span class="resize-handle" data-col="4"></span></div>
-      <div class="th" style="text-align:center;">WA</div>
+      <div class="th" style="text-align:center;">WA<span class="resize-handle" data-col="5"></span></div>
+      <div class="th" style="text-align:center;">Disponibles</div>
     </div>
     <div id="tabla-body"></div>
     <div class="fila-nueva">
-      <div class="td"><input class="inp-cel" type="time" id="n-hora" step="1800"/></div>
+      <div class="td">
+        <select class="inp-cel" id="n-hora">
+          <option value="">--:--</option>
+          <option>7:00</option><option>7:30</option><option>8:00</option><option>8:30</option>
+          <option>9:00</option><option>9:30</option><option>10:00</option><option>10:30</option>
+          <option>11:00</option><option>11:30</option><option>12:00</option><option>12:30</option>
+          <option>13:00</option><option>13:30</option><option>14:00</option><option>14:30</option>
+          <option>15:00</option><option>15:30</option><option>16:00</option><option>16:30</option>
+          <option>17:00</option><option>17:30</option><option>18:00</option><option>18:30</option>
+          <option>19:00</option><option>19:30</option><option>20:00</option>
+        </select>
+      </div>
       <div class="td"><input class="inp-cel" type="text" id="n-pac" placeholder="Nombre paciente"/></div>
       <div class="td"><select class="inp-cel" id="n-os"></select></div>
       <div class="td"><input class="inp-cel" type="text" id="n-tel" placeholder="362 4XXXXXX"/></div>
       <div class="td" style="justify-content:center;"><select class="inp-cel" id="n-conf"><option value="">Pendiente</option><option value="CONFIRMA">Confirma</option><option value="CANCELA">Cancela</option></select></div>
       <div class="td"><button class="btn-add" onclick="agregarFila()">+</button></div>
+      <div class="td"></div>
     </div>
   </div>
 </main>
@@ -588,8 +601,7 @@ function renderStats(){
 }
 
 // ── RESIZE COLUMNAS ──────────────────────────────────────────────
-// Anchos iniciales en px para cada columna (índice 0-5)
-let colWidths = [60, 220, 180, 140, 120, 48];
+let colWidths = [60, 200, 170, 140, 110, 80, 140];
 
 function aplicarAnchos(){
   const template = colWidths.map(w=>w+'px').join(' ');
@@ -638,6 +650,27 @@ function editarCampo(idx,campo,valor,tabla='turnos'){
   else{const fecha=dias[diaActivo]?.fecha;if(!fecha||!filas[fecha])return;filas[fecha][idx][campo]=valor.trim();}
   guardar();renderStats();renderDias();renderEsperaPill();
 }
+function turnosDisponibles(horaActual){
+  // Busca slots libres en días futuros a la misma hora o similares
+  const hoy = dias[diaActivo]?.fecha || '';
+  const disponibles = [];
+  dias.forEach(d=>{
+    if(d.fecha <= hoy || d.oculto) return;
+    const libres = (filas[d.fecha]||[]).filter(f=>!f.pac);
+    if(libres.length){
+      disponibles.push({label:`${d.label} ${fmtF(d.fecha)}`, libres});
+    }
+  });
+  if(!disponibles.length) return `<span style="font-size:10px;color:var(--ink3);">Sin disp.</span>`;
+  const opts = disponibles.map(d=>
+    d.libres.map(f=>`<option value="${d.label}|${f.hora}">${d.label} ${f.hora}</option>`).join('')
+  ).join('');
+  return `<select style="font-size:10px;font-family:var(--mono);border:none;background:none;color:var(--sage);cursor:pointer;max-width:100%;outline:none;" title="Turnos disponibles" onchange="if(this.value){const[dia,hora]=this.value.split('|');alert('Disponible: '+dia+' a las '+hora);this.value='';}">
+    <option value="">🗓 ${disponibles.reduce((a,d)=>a+d.libres.length,0)} libres</option>
+    ${opts}
+  </select>`;
+}
+
 function renderTabla(){
   const fecha=dias[diaActivo]?.fecha;const lista=filas[fecha]||[];
   if(!lista.length){document.getElementById('tabla-body').innerHTML='<div class="empty">Sin turnos — usá la fila de abajo para agregar</div>';aplicarAnchos();return;}
@@ -646,7 +679,18 @@ function renderTabla(){
     let fc='libre';if(tienePac&&conf==='CONFIRMA')fc='confirmada';else if(tienePac&&conf==='CANCELA')fc='cancelada';else if(tienePac)fc='pendiente';
     let cls='conf-pendiente',lbl='? Pendiente';if(conf==='CONFIRMA'){cls='conf-confirma';lbl='✓ Confirma';}if(conf==='CANCELA'){cls='conf-cancela';lbl='✕ Cancela';}
     const tieneWA=f.pac&&f.tel;const part=(osNombreBase(f.os||''))==='PARTICULAR';
-    return`<div class="fila ${fc}"><div class="td td-hora">${f.hora}</div><div class="td td-pac"><input class="inp-inline" value="${f.pac||''}" placeholder="— disponible —" onchange="editarCampo(${idx},'pac',this.value)" onblur="editarCampo(${idx},'pac',this.value)"/></div><div class="td"><select class="inp-inline inp-os ${part?'part':''}" onchange="editarCampo(${idx},'os',this.value)">${osOpciones(f.os)}</select></div><div class="td td-tel" style="gap:6px;"><input class="inp-inline inp-tel" value="${f.tel||''}" placeholder="—" onchange="editarCampo(${idx},'tel',this.value)" onblur="editarCampo(${idx},'tel',this.value)" style="flex:1;min-width:0;"/>${f.tel?`<button onclick="copiarTexto('${f.tel.replace(/'/g,"\\'")}',this)" title="Copiar número" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:0.5;flex-shrink:0;" >📋</button>`:''}</div><div class="td td-conf"><button class="conf-btn ${cls}" onclick="ciclar(${idx})">${lbl}</button></div><div class="td">${tieneWA?`<button class="wa-btn" onclick="abrirWA(${idx})">${svgWA()}</button>`:`<div class="wa-btn off">${svgWA()}</div>`}</div></div>`;
+    const fecha_actual=dias[diaActivo].fecha;
+    const msgTexto=tieneWA?mensaje(f,fecha_actual):'';
+    const btnCopiarMsg=tieneWA?`<button onclick="copiarTexto('${msgTexto.replace(/'/g,"\\'").replace(/\n/g,'\\n')}',this)" title="Copiar mensaje" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 3px;opacity:0.7;flex-shrink:0;">💬</button>`:'';
+    return`<div class="fila ${fc}">
+      <div class="td td-hora">${f.hora}</div>
+      <div class="td td-pac"><input class="inp-inline" value="${f.pac||''}" placeholder="— disponible —" onchange="editarCampo(${idx},'pac',this.value)" onblur="editarCampo(${idx},'pac',this.value)"/></div>
+      <div class="td"><select class="inp-inline inp-os ${part?'part':''}" onchange="editarCampo(${idx},'os',this.value)">${osOpciones(f.os)}</select></div>
+      <div class="td td-tel" style="gap:4px;"><input class="inp-inline inp-tel" value="${f.tel||''}" placeholder="—" onchange="editarCampo(${idx},'tel',this.value)" onblur="editarCampo(${idx},'tel',this.value)" style="flex:1;min-width:0;"/>${f.tel?`<button onclick="copiarTexto('${f.tel.replace(/'/g,"\\'")}',this)" title="Copiar número" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 3px;opacity:0.5;flex-shrink:0;">📋</button>`:''}</div>
+      <div class="td td-conf"><button class="conf-btn ${cls}" onclick="ciclar(${idx})">${lbl}</button></div>
+      <div class="td" style="justify-content:center;gap:4px;">${tieneWA?`<button class="wa-btn" onclick="abrirWA(${idx})">${svgWA()}</button>`:`<div class="wa-btn off">${svgWA()}</div>`}${btnCopiarMsg}</div>
+      <div class="td" style="justify-content:center;">${turnosDisponibles(f.hora)}</div>
+    </div>`;
   }).join('');
   aplicarAnchos();
 }
